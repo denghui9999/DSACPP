@@ -1,4 +1,5 @@
 #include "Vector.h"
+#include "fibonacci.h"//引入Fib类，在fibSearch中使用
 #include <random>//置乱函数使用置乱器
 #include <utility> //使用swap()函数
 #include <iostream>
@@ -46,9 +47,11 @@ void Vector<T>::shrink()
 template <typename T>
 void Vector<T>::permute()
 {
-    std::default_random_engine e;
-    for (int i = _size; i != 0; --i)
-        std::swap(_elem[i - 1], _elem[e() % i]);
+    for (int i = _size; i != 0; --i){
+        static std::default_random_engine e;
+        static std::uniform_int_distribution<Rank> u(0, i - 1);
+        std::swap(_elem[i - 1], _elem[u(e)]);//swap()-头文件ultility
+    }
 }
 
 
@@ -80,18 +83,22 @@ Vector<T> &Vector<T>::operator=(const Vector<T> &V)
 }
 
 template <typename T>
-T & Vector<T>::operator[](Rank r)const
+T & Vector<T>::operator[](Rank r)const//此处并没有对原有对象进行修改，但对返回的引用进行改变
+//判断r是否越界(即 r >= _size)由上层判断
 {
     return _elem[r];
 }
 
 template <typename T>
-void Vector<T>::unsort(Rank lo,Rank hi)     //[lo,hi)
+void Vector<T>::unsort(Rank lo,Rank hi)     //置乱[lo,hi)
 {
-    std::default_random_engine e;
     T *V = _elem + lo;
     for (int i = hi - lo; i != 0; --i)
-        std::swap(V[i - 1], V[e() % i]);
+    {
+        static std::default_random_engine e;
+        static std::uniform_int_distribution<Rank> u(0, i - 1);
+        std::swap(V[i - 1], V[u(e)]);
+    }
 }
 
 template <typename T>
@@ -113,7 +120,7 @@ Rank Vector<T>::insert(Rank r, const T &e)    //0 <= r <_size
 }
 
 template <typename T>
-int Vector<T>::remove(Rank lo,Rank hi)
+int Vector<T>::remove(Rank lo, Rank hi) //[lo,hi)
 {
     if(lo==hi)
         return 0;
@@ -132,73 +139,138 @@ T Vector<T>::remove(Rank r)
     return e;
 }
 
+template <typename T>
+int Vector<T>::deduplicate() //去除无序向量的重复元素，返回去除的元素个数
+{
+    int oldSize = _size;
+    Rank i = 1;
+    while(i<_size)
+    {
+        find(_elem[i], 0, i) < 0 ? ++i : remove(i);
+    }
+    return oldSize - _size;
+}
+
+//有序向量
+template <typename T>
+int Vector<T>::disordered()const//判别向量中逆序的元素数，返回0表示该向量有序
+{
+    int n = 0;//记录逆序数
+    for (int i = 1; i != _size; ++i)
+    {
+        if(_elem[i-1]>_elem[i])
+            ++n;
+    }
+    return n;
+}
+
+//template <typename T>
+//int Vector<T>::uniquify()//该函数为低效版 复杂度 O(n2)
+//{
+//    int oldsize = _size;
+//    int i = 1;
+//    while (i < _size)
+//        _elem[i - 1] == _elem[i] ? remove(i) : ++i;//remove() O(n)
+//    return oldsize - _size;
+//}
+
+template <typename T>
+int Vector<T>::uniquify()//有序向量唯一化高效版,
+//避免了remove()操作, 复杂度O(n)
+//由无序向量的o(n2)到有序向量的O(n),关键在与对向量进行排序
+{
+    Rank i = 0, j = 0;
+    while(++j<_size)
+    if(_elem[i]!=_elem[j])
+        _elem[++i] = _elem[j];//覆盖操作就意味着删除了原有的元素
+    _size = ++i;
+    shrink();
+    return j - i;
+}
+
+template <typename T>
+Rank Vector<T>::binSearch_A(const T &e,Rank lo,Rank hi)const//在[lo,hi)中查找返回秩，失败返回-1
+//O(1.5log2(n))   
+{
+    while(lo<hi)
+    {
+        int mi = (lo + hi) >> 1;
+        if (e < _elem[mi])
+            hi = mi;
+        else if (_elem[mi] < e)//考虑到可能T只重载了操作符 <
+            lo = mi + 1;
+        else
+            return mi;
+    }
+    return -1;
+}
+
+template <typename T>
+Rank Vector<T>::fibSearch(const T &e, Rank lo, Rank hi)const//在[lo,hi)中查找返回秩，失败返回-1
+//O(1.44log2(n))
+{
+    Fib fib(hi - lo);
+    while (lo < hi)
+    {
+        while ((hi - lo) < fib.get())//最终，fib.get()最小为 1
+            fib.prev();
+        Rank mi = lo + fib.get() - 1;
+        if(e<_elem[mi])
+            hi = mi;
+        else if(_elem[mi]<e)
+            lo = mi + 1;
+        else
+            return mi;
+    }
+    return -1;
+}
+
+template <typename T>
+Rank Vector<T>::binSearch_B(const T &e, Rank lo, Rank hi)const //在[lo,hi)中查找返回秩，失败返回-1
+//三分支减少为二分支 但停止条件变为查找区间不足2 好的情况效率变低，坏的情况效率提升
+{
+    
+    while (1 < hi - lo)
+    {
+        Rank mi = (lo + hi) >> 1;
+        (e < _elem[mi]) ? hi = mi : lo = mi;
+    }
+    return (e == _elem[lo]) ? lo : -1;
+}
+
+template <typename T>
+Rank Vector<T>::binSearch_C(const T &e,Rank lo,Rank hi)const//在[lo,hi)中查找e
+//命中反对其中秩最大者，未命中返回小于e的最大秩
+{
+    while(lo<hi)
+    {
+        Rank mi = (lo + hi) >> 1;
+        (e < _elem[mi]) ? hi = mi : lo = mi + 1;
+    }
+    return --lo;
+}
+
+template <typename T>
+Rank Vector<T>::Search(const T &e)const
+{
+    static std::default_random_engine re;
+    static std::uniform_int_distribution<unsigned> u(0, 1);
+    return u(re) ? binSearch_C(e, 0, _size) : fibSearch(e, 0, _size);
+}
+
+
 int main()
 {
-    int a[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    Vector<int> Vec1(10, 5, 5);
-    Vector<int> Vec2(a, 8);
-    Vector<int> Vec3(a, 2, 5);
-    Vector<int> Vec4(Vec2);
-    Vector<int> Vec5(Vec2, 2, Vec2.size());
-
-    Vec1.show();
+    const int arr_size = 10;
+    int arr_test[arr_size];
+    for (int i = 0; i !=arr_size;++i)
+        arr_test[i] = i * 2;
+    Vector<int> test1(arr_test, arr_size);
+    test1.show();
     std::cout << std::endl;
-    Vec2.show();
+    test1.unsort(5, 10);
+    test1.show();
     std::cout << std::endl;
-    Vec3.show();
-    std::cout << std::endl;
-    Vec4.show();
-    std::cout << std::endl;
-    Vec5.show();
-    std::cout << std::endl;
-    //测试各个构造函数   copyfrom()
-
-    Vec3.show();
-    std::cout << std::endl;
-    Vec3 = Vec2;
-    Vec3.show();
-    std::cout << std::endl;
-    Vec3.unsort(Vec3.size() >> 1, Vec3.size());
-    Vec3.show();
-    std::cout << std::endl;
-    Vec3.unsort();
-    Vec3.show();
-    std::cout << std::endl;
-    //测试=   两个unsort() permute()
-
-    Vec3[0] = -1;
-    Vec3.show();
-    std::cout << std::endl;
-    //测试[]
-
-    std::cout << Vec3.empty() << '\t' << Vec3.size() << '\t' << *Vec3.elem() << std::endl;
-    //测试 上述三个函数
-
-    std::cout << Vec3.find(-2) << '\t' << Vec3.find(-1, 4, 8) << std::endl;
-    //测试两个find()
-
-    Vector<int> Vec6(3, 3, 1);
-    Vec6.show();
-    std::cout << Vec6.size() << std::endl;
-    Vec6.insert(1, -1);
-    Vec6.show();
-    std::cout << Vec6.size() << std::endl;
-    //测试expand()和insert();
-
-    Vector<int> Vec7(10, 10, 7);
-    Vec7.show();
-    std::cout << std::endl;
-    std::cout << Vec7.size() << std::endl;
-    std::cout << Vec7.remove(2, 10) << std::endl;
-    Vec7.show();
-    std::cout << std::endl;
-    std::cout << Vec7.size() << std::endl;
-    std::cout << Vec7.remove(0) << std::endl;
-    Vec7.show();
-    std::cout << std::endl;
-    std::cout << Vec7.size() << std::endl;
-    //测试两个 remove() 和 shrink()
-
-
-    return 0;
+    
+    return 0;   
 }

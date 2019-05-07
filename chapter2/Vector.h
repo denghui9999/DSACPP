@@ -18,6 +18,8 @@ class Vector
     void shrink();//小于_size<_capacity的25%缩小
     void permute(); //置乱器，将向量置为乱序，内部接口，对外提供unsort()
 
+    //排序
+    void bubbleSort()(Rank lo, Rank hi); //冒泡排序[lo,hi)
 
   public:
     Vector(int c = DEFAULT_CAPACITY, int s = 0, T v = 0) //容量为c，规模为s，初始化为v
@@ -50,8 +52,21 @@ class Vector
     Rank insert(Rank r, const T &e);//在r出插入e 其与之后元素后移一位,返回插入位置的秩
     Rank insert(const T &e) { return insert(_size, e); }//在最后插入一个元素,返回最后一个元素的秩
     int remove(Rank lo, Rank hi);//去除[lo,hi)间的元素，后面元素前移，返回去除元素的个数
-    T remove(Rank r);//去除秩为r的元素，后面元素后移，返回去除的元素的值
+    T remove(Rank r);//去除秩为r的元素，后面元素前移，返回去除的元素的值
+    int deduplicate();//去除无序向量的重复元素，返回去除的元素个数 O(n2)
+    void traverse(void (*visit)(T &)) { for (int i = 0; i != _elem;++i)
+        visit(_elem[i]);
+    }
 
+    //有序向量(隐含条件，各个元素之间可以比较大小)假设T已经重载 > 和 ==
+    int disordered() const;//因为有序向量可以采用特有的算法，此函数进行判别，返回逆序数
+    int uniquify();        //有序向量的唯一化操作
+    //查找
+    Rank binSearch_A(const T &e, Rank lo, Rank hi)const;//二分查找版本A
+    Rank fibSearch(const T &e, Rank lo, Rank hi)const;//fibonacci查找
+    Rank binSearch_B(const T &e, Rank lo, Rank hi)const;//二分查找版本B
+    Rank binSearch_C(const T &e, Rank lo, Rank hi)const;//二分查找版本C
+    Rank Search(const T &e) const;//整体查找
 };
 
 
