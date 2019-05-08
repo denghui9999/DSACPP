@@ -19,7 +19,11 @@ class Vector
     void permute(); //置乱器，将向量置为乱序，内部接口，对外提供unsort()
 
     //排序
-    void bubbleSort()(Rank lo, Rank hi); //冒泡排序[lo,hi)
+    bool bubble(Rank lo, Rank hi);
+    void bubbleSort(Rank lo, Rank hi); //冒泡排序[lo,hi) 复杂度O(n2)
+
+    void merge(Rank lo, Rank mi, Rank hi);
+    void mergeSort(Rank lo, Rank hi);//归并排序[lo,hi)  复杂度最坏 O(nlogN)
 
   public:
     Vector(int c = DEFAULT_CAPACITY, int s = 0, T v = 0) //容量为c，规模为s，初始化为v
@@ -58,6 +62,8 @@ class Vector
         visit(_elem[i]);
     }
 
+    void Sort(Rank lo, Rank hi);   //采用随机一排序算法对乱序向量排序
+    void Sort() { Sort(0, _size); }//调用内部接口
     //有序向量(隐含条件，各个元素之间可以比较大小)假设T已经重载 > 和 ==
     int disordered() const;//因为有序向量可以采用特有的算法，此函数进行判别，返回逆序数
     int uniquify();        //有序向量的唯一化操作
