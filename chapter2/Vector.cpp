@@ -240,7 +240,7 @@ Rank Vector<T>::binSearch_B(const T &e, Rank lo, Rank hi)const //在[lo,hi)中�
 
 template <typename T>
 Rank Vector<T>::binSearch_C(const T &e,Rank lo,Rank hi)const//在[lo,hi)中查找e
-//命中反对其中秩最大者，未命中返回小于e的最大秩
+//命中返回其中秩最大者，未命中返回小于e的最大秩
 {
     while(lo<hi)
     {
@@ -258,19 +258,91 @@ Rank Vector<T>::Search(const T &e)const
     return u(re) ? binSearch_C(e, 0, _size) : fibSearch(e, 0, _size);
 }
 
+//冒泡排序
+template <typename T>
+bool Vector<T>::bubble(Rank lo,Rank hi)//一趟扫描将[lo,hi)中最大数置于最后，返回false
+{
+    bool sorted = true;
+    while (++lo < hi)
+    {
+        if (_elem[lo] < _elem[lo - 1])
+        {
+            sorted = false;
+            std::swap(_elem[lo - 1], _elem[lo]);
+        }
+    }
+    return sorted;
+}
+template <typename T>
+void Vector<T>::bubbleSort(Rank lo,Rank hi)//多趟扫描，直至全序
+{
+    while(!bubble(lo,hi--))
+        ;
+}
+
+
+//归并排序
+template <typename T>
+void Vector<T>::merge(Rank lo, Rank mi, Rank hi)
+{
+    T *A = _elem + lo;
+    int lb = mi - lo;
+    T *B = new T[lb]; //
+    for (Rank i = 0; i != lb; ++i)
+        B[i] = A[i];
+    int lc = hi - mi;
+    T *C = _elem + mi;
+    for (Rank i = 0, j = 0, k = 0; (j < lb) || (k < lc);)
+    {
+        if ((j < lb) && ((k >= lc) || (B[j] <= C[k])))
+            A[i++] = B[j++];
+        if ((k < lc) && ((j >= lb) || (C[k] < B[j])))
+            A[i++] = C[k++];
+    }
+    delete[] B;
+}
+template <typename T>
+void Vector<T>::mergeSort(Rank lo,Rank hi)
+{
+    if (hi - lo < 2)
+        return;
+    int mi = (lo + hi) >> 1;
+    mergeSort(lo, mi); //无序向量的递归分解
+    mergeSort(mi, hi); //无序向量的递归分解
+    merge(lo, mi, hi); //归并生成有序向量
+}
+
+template <typename T>
+void Vector<T>::Sort(Rank lo, Rank hi) //[lo,hi)对外的排序接口，采用随机一排序算法
+{
+    static std::default_random_engine e;
+    static std::uniform_int_distribution<int> u(0, 1);
+    (u(e) == 0) ? bubbleSort(lo, hi) : mergeSort(lo, hi);
+}
 
 int main()
 {
-    const int arr_size = 10;
+    const int arr_size = 25;
     int arr_test[arr_size];
     for (int i = 0; i !=arr_size;++i)
         arr_test[i] = i * 2;
+    
     Vector<int> test1(arr_test, arr_size);
     test1.show();
     std::cout << std::endl;
-    test1.unsort(5, 10);
+
+    test1.unsort();
     test1.show();
     std::cout << std::endl;
-    
+
+    test1.Sort(0, 9);
+    test1.show();
+    std::cout << std::endl;
+    test1.Sort(9, 18);
+    test1.show();
+    std::cout << std::endl;
+    test1.Sort(18, 25);
+    test1.show();
+    std::cout << std::endl;
     return 0;   
 }
